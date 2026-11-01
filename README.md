@@ -1,4 +1,4 @@
-# 🧠 Alzheimer Detection Using Speech Recognition
+# Alzheimer Detection Using Speech Recognition
 
 A cutting-edge AI project that uses **speech recognition and machine learning** to detect early signs of *Alzheimer’s disease* from voice recordings.
 
@@ -20,36 +20,36 @@ This project demonstrates the intersection of:
 - Cognitive Analysis
 ---
 
-## 🚀 Project Overview
+## Project Overview
 
 Alzheimer’s is a progressive neurological disorder that impacts memory, behavior and communication. Speech carries subtle cues — like pauses, prosody, fluency and language use — that can signal cognitive impairment. By leveraging **AI and speech recognition**, this project aims to classify speech samples into Alzheimer’s vs. non-Alzheimer’s categories using deep learning and traditional ML models.
 
 ---
 
-## 🧩 Features
+## Features
 
-- 🎙️ **Speech Recognition**
+- **Speech Recognition**
   - Transcribes audio recordings into text using an ASR engine.
 
-- 🧠 **AI-Driven Detection**
+- **AI-Driven Detection**
   - Extracts acoustic and linguistic features from speech.
   - Trains ML/DL models to predict early cognitive signs.
 
-- 📊 **Visual Results & Predictions**
+- **Visual Results & Predictions**
   - Outputs probability scores and prediction results.
   - (Optional) Visualization of spectrograms/features.
 
-- 🎛️ **Hybrid Deep Learning + Fuzzy Logic System (XAI)**
+- **Hybrid Deep Learning + Fuzzy Logic System (XAI)**
   - Interpretable Mamdani Fuzzy Inference System integrating deep neural probabilities with 5 acoustic biomarkers.
   - Calibrated membership functions for pause durations, intra-sentence hesitations, phonation rate, jitter, and shimmer.
   - Transparent rule activation tracking, centroid defuzzification (0–100 score), and neural-acoustic discordance detection.
   - Complete architecture, formulas, and evaluation benchmarks documented in [HYBRID_FUZZY_SYSTEM.md](HYBRID_FUZZY_SYSTEM.md).
 
-- 🔧 Modular backend and frontend support for easy extension.
+- Modular backend and frontend support for easy extension.
 
 ---
 
-## 📁 Repo Structure
+## Repo Structure
 
 ```text
 alzimer_detection/
