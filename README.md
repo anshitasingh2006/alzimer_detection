@@ -5,7 +5,7 @@ A cutting-edge AI project that uses **speech recognition and machine learning** 
 This repository combines speech preprocessing, feature extraction, and predictive modeling to build a non-invasive system for detecting cognitive decline from speech patterns — empowering early diagnosis with modern AI techniques.
 
 ---
-## 🧠 About the Project
+## About the Project
 
 Alzheimer Detection Using Speech Recognition is an AI-driven system designed to identify early signs of Alzheimer’s disease through voice analysis.
 
@@ -22,7 +22,7 @@ This project demonstrates the intersection of:
 
 ## 🚀 Project Overview
 
-Alzheimer’s is a progressive neurological disorder that impacts memory, behavior and communication. Speech carries subtle cues — like pauses, prosody, fluency and language use — that can signal cognitive impairment. By leveraging **AI and speech recognition**, this project aims to classify speech samples into Alzheimer’s vs. non-Alzheimer’s categories using deep learning and traditional ML models. :contentReference[oaicite:0]{index=0}
+Alzheimer’s is a progressive neurological disorder that impacts memory, behavior and communication. Speech carries subtle cues — like pauses, prosody, fluency and language use — that can signal cognitive impairment. By leveraging **AI and speech recognition**, this project aims to classify speech samples into Alzheimer’s vs. non-Alzheimer’s categories using deep learning and traditional ML models.
 
 ---
 
@@ -47,26 +47,32 @@ Alzheimer’s is a progressive neurological disorder that impacts memory, behavi
 
 - 🔧 Modular backend and frontend support for easy extension.
 
-
 ---
 
 ## 📁 Repo Structure
 
-Alzimer_detection_using_speech_recognation/
+```text
+alzimer_detection/
 │
-├── Backend/ # AI models, speech processing & API logic
-│ ├── app.py # Main backend application
-│ ├── model/ # Trained ML/DL models
-│ ├── utils/ # Helper functions (feature extraction, preprocessing)
-│ └── requirements.txt # Backend dependencies
+├── Backend/                       # AI models, speech processing & API logic
+│   ├── app.py                     # Main FastAPI application
+│   ├── inference.py               # Unified DL + Fuzzy prediction pipeline
+│   ├── fuzzy_rules.py             # Empirical membership functions & Mamdani rules
+│   ├── fuzzy_logic.py             # Fuzzy inference engine & XAI report generator
+│   ├── fuzzy_visualization.py     # Membership and defuzzification plotting
+│   ├── evaluate_hybrid_system.py  # 40-audio validation benchmark script
+│   ├── test_fuzzy_logic.py        # Automated unit tests
+│   ├── models/                    # Trained CNN-LSTM & GRU attention models
+│   ├── utils/                     # Feature extraction & audio preprocessing
+│   └── requirements.txt           # Backend dependencies
 │
-├── Frontend/ # User interface
-│ ├── public/ # Static assets
-│ ├── src/ # Frontend source code
-│ └── package.json # Frontend dependencies
+├── Frontend/                      # User interface
+│   ├── public/                    # Static assets & generated plots
+│   ├── src/                       # React frontend source code & Fuzzy UI
+│   └── package.json               # Frontend dependencies
 │
-├── test/ # Sample audio files for testing
-│
-├── README.md # Project documentation
-└── .gitignore # Ignored files
+├── HYBRID_FUZZY_SYSTEM.md         # Full research & engineering specifications
+├── README.md                      # Project documentation
+└── .gitignore                     # Ignored files
+```
 
