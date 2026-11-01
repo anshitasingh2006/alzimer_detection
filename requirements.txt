@@ -11,3 +11,5 @@ passlib[bcrypt]
 pyjwt
 python-multipart
 soundfile
+scikit-fuzzy
+

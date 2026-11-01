@@ -39,7 +39,14 @@ Alzheimer’s is a progressive neurological disorder that impacts memory, behavi
   - Outputs probability scores and prediction results.
   - (Optional) Visualization of spectrograms/features.
 
+- 🎛️ **Hybrid Deep Learning + Fuzzy Logic System (XAI)**
+  - Interpretable Mamdani Fuzzy Inference System integrating deep neural probabilities with 5 acoustic biomarkers.
+  - Calibrated membership functions for pause durations, intra-sentence hesitations, phonation rate, jitter, and shimmer.
+  - Transparent rule activation tracking, centroid defuzzification (0–100 score), and neural-acoustic discordance detection.
+  - Complete architecture, formulas, and evaluation benchmarks documented in [HYBRID_FUZZY_SYSTEM.md](HYBRID_FUZZY_SYSTEM.md).
+
 - 🔧 Modular backend and frontend support for easy extension.
+
 
 ---
 

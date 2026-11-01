@@ -18,7 +18,16 @@ import {
   X,
   Send,
   Loader2,
+  Sliders,
+  BarChart2,
+  HelpCircle,
+  ChevronDown,
+  ChevronUp,
+  ShieldCheck,
+  Scale,
+  Eye,
 } from "lucide-react";
+
 
 const API_BASE = "http://127.0.0.1:8000";
 const GEMINI_API_KEY = "AIzaSyAxVaesEB2skVSneYdU17zNFuQNVliRwk8";
@@ -62,8 +71,515 @@ const ConfidenceBar = ({ probability }) => {
   );
 };
 
+// ==================== FUZZY LOGIC VISUALIZATION COMPONENTS ====================
+
+const FuzzyGauge = ({ score, category }) => {
+  const s = Math.min(100, Math.max(0, typeof score === "number" ? score : 50));
+  const radius = 62;
+  const stroke = 10;
+  const circumference = Math.PI * radius;
+  const progressOffset = circumference - (s / 100) * circumference;
+
+  let strokeColor = "#10b981";
+  let badgeStyle = "bg-emerald-500/20 text-emerald-300 border-emerald-500/30";
+  let concernLabel = "Low Concern";
+
+  if (category === "Moderate" || (s >= 35 && s < 65)) {
+    strokeColor = "#f59e0b";
+    badgeStyle = "bg-amber-500/20 text-amber-300 border-amber-500/30";
+    concernLabel = "Moderate Concern";
+  } else if (category === "High" || s >= 65) {
+    strokeColor = "#ef4444";
+    badgeStyle = "bg-rose-500/20 text-rose-300 border-rose-500/30";
+    concernLabel = "High Concern";
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center">
+      <div className="relative w-40 h-24 flex items-center justify-center overflow-hidden">
+        <svg className="w-40 h-40 absolute top-0" viewBox="0 0 160 160">
+          <path
+            d="M 18 80 A 62 62 0 0 1 142 80"
+            fill="none"
+            stroke="rgba(51, 65, 85, 0.4)"
+            strokeWidth={stroke}
+            strokeLinecap="round"
+          />
+          <path
+            d="M 18 80 A 62 62 0 0 1 142 80"
+            fill="none"
+            stroke={strokeColor}
+            strokeWidth={stroke}
+            strokeDasharray={circumference}
+            strokeDashoffset={progressOffset}
+            strokeLinecap="round"
+            className="transition-all duration-1000 ease-out"
+          />
+        </svg>
+        <div className="absolute bottom-1 flex flex-col items-center">
+          <span className="text-3xl font-extrabold text-white tracking-tight">
+            {s.toFixed(1)}
+          </span>
+          <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+            Score / 100
+          </span>
+        </div>
+      </div>
+      <span className={`mt-1 px-3 py-0.5 rounded-full text-[11px] font-semibold border ${badgeStyle}`}>
+        {category ? `${category} Concern` : concernLabel}
+      </span>
+    </div>
+  );
+};
+
+const FuzzyAcousticBar = ({ name, rawValue, unit, category, min, max, memberships }) => {
+  const norm = Math.min(100, Math.max(0, ((rawValue - min) / (max - min)) * 100));
+
+  let badgeColor = "bg-emerald-500/20 text-emerald-300 border-emerald-500/30";
+  let barColor = "bg-emerald-500";
+  if (category === "Moderate" || category === "Medium") {
+    badgeColor = "bg-amber-500/20 text-amber-300 border-amber-500/30";
+    barColor = "bg-amber-500";
+  } else if (category === "Long" || category === "Frequent" || (category === "Low" && name.includes("Phonation")) || category === "High") {
+    badgeColor = "bg-rose-500/20 text-rose-300 border-rose-500/30";
+    barColor = "bg-rose-500";
+  }
+
+  return (
+    <div className="p-3.5 rounded-2xl bg-slate-900/50 border border-slate-800/80 hover:border-slate-700/80 transition-all">
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-xs font-semibold text-slate-300">{name}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-mono font-bold text-white">
+            {typeof rawValue === "number" ? rawValue.toFixed(unit === "s" || unit === "" ? 3 : 1) : rawValue}
+            <span className="text-slate-400 text-[10px] ml-0.5">{unit}</span>
+          </span>
+          <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${badgeColor}`}>
+            {category}
+          </span>
+        </div>
+      </div>
+      <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden mb-2">
+        <div
+          className={`h-full ${barColor} transition-all duration-700`}
+          style={{ width: `${norm}%` }}
+        />
+      </div>
+      {memberships && (
+        <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+          <span className="text-slate-500">μ(x):</span>
+          {Object.entries(memberships).map(([term, deg]) => (
+            <span
+              key={term}
+              className={`px-1.5 py-0.2 rounded font-mono ${
+                deg > 0.4
+                  ? "bg-violet-500/30 text-violet-200 font-semibold border border-violet-500/40"
+                  : deg > 0.05
+                  ? "bg-slate-800 text-slate-300"
+                  : "text-slate-600"
+              }`}
+            >
+              {term}: {deg.toFixed(2)}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const FuzzyPlotsModal = ({ isOpen, onClose }) => {
+  const [tab, setTab] = useState("memberships");
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="relative w-full max-w-4xl max-h-[90vh] glass-panel rounded-3xl p-6 md:p-8 flex flex-col border border-white/10 shadow-2xl overflow-hidden">
+        <div className="flex items-center justify-between pb-4 border-b border-white/10">
+          <div>
+            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+              <BarChart2 className="w-5 h-5 text-violet-400" />
+              Fuzzy System Inspection &amp; Research Visuals
+            </h3>
+            <p className="text-xs text-slate-400">
+              Publication-grade visual validation and empirical membership functions.
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="flex gap-2 my-4">
+          {[
+            { id: "memberships", label: "Membership Functions (7 Variables)" },
+            { id: "roc", label: "ROC Curve (Deep Learning vs Hybrid)" },
+            { id: "confusion", label: "Confusion Matrices (N=40)" },
+          ].map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                tab === t.id
+                  ? "bg-violet-600 text-white shadow-lg shadow-violet-500/30"
+                  : "bg-slate-800/80 text-slate-400 hover:text-white"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex-1 overflow-y-auto rounded-2xl bg-slate-950/60 p-4 border border-white/5 flex items-center justify-center">
+          {tab === "memberships" && (
+            <div className="text-center space-y-2">
+              <img
+                src="/fuzzy_membership_functions.png"
+                alt="Fuzzy Membership Functions"
+                className="max-h-[60vh] object-contain rounded-xl mx-auto shadow-xl"
+              />
+              <p className="text-[11px] text-slate-400">
+                Empirical triangular &amp; trapezoidal membership functions calibrated across 40 patient recordings.
+              </p>
+            </div>
+          )}
+
+          {tab === "roc" && (
+            <div className="text-center space-y-2">
+              <img
+                src="/comparative_roc_analysis.png"
+                alt="Comparative ROC Curve"
+                className="max-h-[60vh] object-contain rounded-xl mx-auto shadow-xl"
+              />
+              <p className="text-[11px] text-slate-400">
+                Independent test cohort ROC comparison across CNN-LSTM, GRU-Attention, and Hybrid Fuzzy FIS.
+              </p>
+            </div>
+          )}
+
+          {tab === "confusion" && (
+            <div className="text-center space-y-2">
+              <img
+                src="/comparative_confusion_matrices.png"
+                alt="Confusion Matrices"
+                className="max-h-[60vh] object-contain rounded-xl mx-auto shadow-xl"
+              />
+              <p className="text-[11px] text-slate-400">
+                Comparative classification matrices evaluated with optimal decision thresholds.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const FuzzyLogicAnalysisSection = ({ prediction, onOpenPlots }) => {
+  const fuzzy = prediction?.fuzzy_analysis || {};
+  const rules = fuzzy?.activated_rule_details || [];
+  const dominant = fuzzy?.feature_analysis || prediction?.feature_analysis || {};
+  const rawVals = fuzzy?.feature_raw_values || prediction?.feature_raw_values || {};
+  const memberships = fuzzy?.feature_memberships || {};
+  const agreement = fuzzy?.agreement_analysis || {};
+  const score = prediction?.fuzzy_score ?? 50.0;
+  const category = prediction?.fuzzy_category || "Moderate";
+  const dlProb = prediction?.probability ?? 0.5;
+
+  const agreementStatus = agreement?.status || "Analyzing";
+  let agreementBadge = "bg-emerald-500/20 text-emerald-300 border-emerald-500/40";
+  if (agreementStatus.includes("Discordance")) {
+    agreementBadge = "bg-rose-500/20 text-rose-300 border-rose-500/40";
+  } else if (agreementStatus.includes("Partial")) {
+    agreementBadge = "bg-amber-500/20 text-amber-300 border-amber-500/40";
+  }
+
+  return (
+    <div className="mt-10 glass-panel rounded-3xl p-8 relative overflow-hidden border border-violet-500/20 shadow-2xl animate-in fade-in slide-in-from-bottom-6 duration-700">
+      <div className="absolute top-0 right-1/4 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-0 left-10 w-80 h-80 bg-violet-600/10 rounded-full blur-3xl pointer-events-none" />
+
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-white/10 relative z-10">
+        <div>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/15 border border-violet-500/30 text-violet-300 text-xs font-semibold mb-2">
+            <Sliders className="w-3.5 h-3.5" />
+            Mamdani Fuzzy Inference System (XAI)
+          </div>
+          <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+            Fuzzy Logic Analysis
+          </h2>
+          <p className="text-xs text-slate-400 mt-1 max-w-2xl">
+            Multi-criteria acoustic inference combining deep neural probability with interpretable prosody biomarkers.
+          </p>
+        </div>
+
+        <button
+          onClick={onOpenPlots}
+          className="self-start md:self-auto inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-violet-600/20 hover:bg-violet-600/30 border border-violet-500/40 text-violet-200 hover:text-white text-xs font-semibold transition-all shadow-lg shadow-violet-900/20"
+        >
+          <BarChart2 className="w-4 h-4 text-violet-400" />
+          <span>Inspect Fuzzy Plots &amp; ROC</span>
+        </button>
+      </div>
+
+      {/* Top Cards: Comparison Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 my-6 relative z-10">
+        {/* Card 1: Neural DL Probability */}
+        <div className="glass-panel rounded-2xl p-5 border border-white/5 flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold flex items-center gap-1.5">
+              <Brain className="w-3.5 h-3.5 text-violet-400" /> Deep Learning Model
+            </span>
+            <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">
+              P ∈ [0, 1]
+            </span>
+          </div>
+
+          <div className="my-2">
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-extrabold text-white">
+                {(dlProb * 100).toFixed(1)}%
+              </span>
+              <span className={`text-xs font-semibold ${dlProb >= 0.52 ? "text-rose-400" : "text-emerald-400"}`}>
+                {dlProb >= 0.52 ? "Alzheimer Pattern" : "Control Speech"}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1">
+              Threshold: {prediction?.threshold_used ? prediction.threshold_used.toFixed(2) : "0.52"} • Model: {prediction?.model_name || "GRU-Attention"}
+            </p>
+          </div>
+
+          <div className="pt-3 border-t border-white/5 text-[11px] text-slate-400">
+            Discriminative latent acoustic feature mapping.
+          </div>
+        </div>
+
+        {/* Card 2: Fuzzy Logic Concern Score & Gauge */}
+        <div className="glass-panel rounded-2xl p-5 border border-violet-500/30 bg-violet-500/5 flex flex-col items-center justify-center relative overflow-hidden">
+          <div className="w-full flex items-center justify-between mb-1">
+            <span className="text-[11px] uppercase tracking-wider text-violet-300 font-semibold flex items-center gap-1.5">
+              <Scale className="w-3.5 h-3.5 text-violet-400" /> Fuzzy Concern Score
+            </span>
+            <span className="text-[10px] px-2 py-0.5 rounded bg-violet-950/70 text-violet-300 font-mono">
+              [0–100]
+            </span>
+          </div>
+
+          <FuzzyGauge score={score} category={category} />
+
+          <div className="w-full pt-2 border-t border-white/5 text-center text-[11px] text-slate-400">
+            Centroid defuzzification of Mamdani rule set.
+          </div>
+        </div>
+
+        {/* Card 3: Agreement & Uncertainty Analysis */}
+        <div className="glass-panel rounded-2xl p-5 border border-white/5 flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-violet-400" /> Model Alignment
+            </span>
+            <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${agreementBadge}`}>
+              {agreementStatus}
+            </span>
+          </div>
+
+          <div className="my-2 space-y-2">
+            <p className="text-xs text-slate-300 leading-relaxed">
+              {agreement?.description || "Evaluating alignment between neural predictions and acoustic rules."}
+            </p>
+            <div className="flex items-center gap-2 text-[11px] text-slate-400">
+              <span>Concordance Weight:</span>
+              <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-violet-500 to-indigo-500"
+                  style={{ width: `${(agreement?.concordance_factor ?? 0.8) * 100}%` }}
+                />
+              </div>
+              <span className="font-mono font-semibold text-slate-200">
+                {((agreement?.concordance_factor ?? 0.8) * 100).toFixed(0)}%
+              </span>
+            </div>
+          </div>
+
+          <div className="pt-3 border-t border-white/5 text-[11px] text-slate-400">
+            Prevents over-reliance on black-box neural outputs.
+          </div>
+        </div>
+      </div>
+
+      {/* Acoustic Feature Analysis Grid */}
+      <div className="my-6 relative z-10">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+            <Activity className="w-4 h-4 text-violet-400" />
+            Acoustic Biomarker Analysis &amp; Empirical Ranges
+          </h3>
+          <span className="text-[11px] text-slate-500">
+            Validated against independent test distributions
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+          <FuzzyAcousticBar
+            name="Average Pause Duration"
+            rawValue={rawVals.average_pause_duration ?? 0.38}
+            unit="s"
+            category={dominant.average_pause_duration || "Moderate"}
+            min={0.0}
+            max={1.2}
+            memberships={memberships.avg_pause_duration}
+          />
+          <FuzzyAcousticBar
+            name="Intra-Sentence Pauses"
+            rawValue={rawVals.intra_sentence_pauses ?? 15}
+            unit="pauses"
+            category={dominant.intra_sentence_pauses || "Moderate"}
+            min={0}
+            max={55}
+            memberships={memberships.intra_sentence_pauses}
+          />
+          <FuzzyAcousticBar
+            name="Phonation Rate (Voicing)"
+            rawValue={rawVals.phonation_rate ?? 0.86}
+            unit=""
+            category={dominant.phonation_rate || "Medium"}
+            min={0.4}
+            max={1.0}
+            memberships={memberships.phonation_rate}
+          />
+          <FuzzyAcousticBar
+            name="Jitter (F0 Instability)"
+            rawValue={rawVals.jitter ?? 5.2}
+            unit="Hz"
+            category={dominant.jitter || "Medium"}
+            min={2.5}
+            max={8.5}
+            memberships={memberships.jitter}
+          />
+          <FuzzyAcousticBar
+            name="Shimmer (Amplitude Instability)"
+            rawValue={rawVals.shimmer ?? 0.031}
+            unit=""
+            category={dominant.shimmer || "Medium"}
+            min={0.005}
+            max={0.085}
+            memberships={memberships.shimmer}
+          />
+          <div className="p-3.5 rounded-2xl bg-gradient-to-br from-violet-950/30 to-indigo-950/20 border border-violet-500/20 flex flex-col justify-between">
+            <span className="text-xs font-semibold text-violet-300 flex items-center gap-1.5">
+              <Brain className="w-3.5 h-3.5" /> Neural Fused Input
+            </span>
+            <div className="my-1">
+              <span className="text-lg font-bold text-white">47 Features Fused</span>
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                40 MFCC coefficients + 7 acoustic prosody vectors across 300 time steps.
+              </p>
+            </div>
+            <div className="text-[10px] text-violet-400 font-mono">
+              Input Tensor: (1, 300, 47)
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Activated Fuzzy Rules (Mamdani Evaluation) */}
+      <div className="my-6 relative z-10">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
+            <Sliders className="w-4 h-4 text-violet-400" />
+            Activated Fuzzy Rules ({rules.length} Fired)
+          </h3>
+          <span className="text-[11px] text-slate-400">
+            Rules sorted by firing strength (α)
+          </span>
+        </div>
+
+        <div className="space-y-2.5">
+          {rules.length > 0 ? (
+            rules.map((r, i) => {
+              const alphaPct = Math.round(r.firing_strength * 100);
+              let tagStyle = "bg-rose-500/20 text-rose-300 border-rose-500/30";
+              if (r.consequent === "Low") tagStyle = "bg-emerald-500/20 text-emerald-300 border-emerald-500/30";
+              if (r.consequent === "Moderate") tagStyle = "bg-amber-500/20 text-amber-300 border-amber-500/30";
+
+              return (
+                <div
+                  key={i}
+                  className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 hover:border-slate-700 transition-all"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2.5">
+                      <span className="px-2.5 py-0.5 rounded-lg bg-violet-600/30 border border-violet-500/40 text-violet-200 font-mono text-xs font-bold">
+                        {r.rule_id}
+                      </span>
+                      <span className="text-sm font-bold text-white">{r.name}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-400">Firing Strength (α):</span>
+                      <span className="font-mono text-xs font-bold text-violet-300">
+                        {r.firing_strength.toFixed(2)}
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${tagStyle}`}>
+                        {r.consequent} Concern
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="w-full bg-slate-800 h-1 rounded-full overflow-hidden mb-2">
+                    <div
+                      className="h-full bg-gradient-to-r from-violet-500 to-indigo-500"
+                      style={{ width: `${alphaPct}%` }}
+                    />
+                  </div>
+
+                  <div className="space-y-1 text-xs">
+                    <p className="text-slate-300 font-mono text-[11px] bg-slate-950/40 p-2 rounded-lg border border-white/5">
+                      {r.description}
+                    </p>
+                    <p className="text-slate-400 text-[11px] italic">
+                      💡 {r.research_context}
+                    </p>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="p-4 rounded-xl bg-slate-900/40 text-slate-400 text-xs text-center">
+              No specific heuristic rules exceeded activation threshold; using default baseline.
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Explainable AI (XAI) Synthesis & Non-Diagnostic Disclaimer */}
+      <div className="mt-6 p-5 rounded-2xl bg-slate-900/70 border border-white/10 relative z-10 space-y-3">
+        <div className="flex items-center gap-2 text-violet-300 font-bold text-sm">
+          <Brain className="w-4 h-4 text-violet-400" />
+          Explainable AI (XAI) Assessment Summary
+        </div>
+        <p className="text-xs text-slate-300 leading-relaxed">
+          {fuzzy?.explanation || prediction?.explanation}
+        </p>
+        <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-[11px] text-blue-200 leading-relaxed flex items-start gap-2">
+          <HelpCircle className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+          <div>
+            <strong>Research Assessment Disclaimer:</strong> {fuzzy?.non_clinical_disclaimer || "This score reflects speech acoustic characteristics only and does not constitute a clinical medical diagnosis."}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 
 const generateGeminiContent = async (prompt, systemInstruction = "") => {
+
   const delays = [1000, 2000, 4000, 8000, 16000];
   let attempt = 0;
 
@@ -194,6 +710,7 @@ export default function App() {
 
   const [aiReport, setAiReport] = useState("");
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [showFuzzyModal, setShowFuzzyModal] = useState(false);
 
   const [showChat, setShowChat] = useState(false);
   const [chatMessages, setChatMessages] = useState([
@@ -803,8 +1320,59 @@ const handleGenerateReport = async () => {
                       )}
                     </div>
                   </div>
-                                    {/* 🔹 Model selection & ensemble (added) */}
+
+                  {/* Quick Demo Sample Audio Buttons */}
+                  <div className="mt-4 p-3 rounded-2xl bg-slate-900/40 border border-slate-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+                    <span className="text-[11px] font-semibold text-slate-400 whitespace-nowrap">
+                      Load Sample Audio:
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            const res = await fetch("/samples/alzheimer_sample_RonaldReagan.wav");
+                            const blob = await res.blob();
+                            const file = new File([blob], "RonaldReagan_Alzheimer_sample.wav", { type: "audio/wav" });
+                            setAudioFile(file);
+                            setPrediction(null);
+                            setAiReport("");
+                            setError("");
+                          } catch (e) {
+                            setError("Could not load sample audio.");
+                          }
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-medium transition-all flex items-center gap-1.5"
+                      >
+                        <FileAudio className="w-3.5 h-3.5" />
+                        Alzheimer Sample
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            const res = await fetch("/samples/control_sample_RosalynnCarter.wav");
+                            const blob = await res.blob();
+                            const file = new File([blob], "RosalynnCarter_Control_sample.wav", { type: "audio/wav" });
+                            setAudioFile(file);
+                            setPrediction(null);
+                            setAiReport("");
+                            setError("");
+                          } catch (e) {
+                            setError("Could not load sample audio.");
+                          }
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-medium transition-all flex items-center gap-1.5"
+                      >
+                        <FileAudio className="w-3.5 h-3.5" />
+                        Control Sample
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 🔹 Model selection & ensemble (added) */}
                   <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+
                     <div>
                       <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400 mb-2">
                         Model
@@ -1004,7 +1572,42 @@ const handleGenerateReport = async () => {
                         </div>
                       )}
 
+
+                      {prediction?.fuzzy_score !== undefined && (
+                        <div className="mb-4 p-3.5 rounded-2xl bg-gradient-to-r from-violet-950/50 to-indigo-950/40 border border-violet-500/30 flex items-center justify-between">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-violet-600/30 flex items-center justify-center text-violet-300">
+                              <Sliders className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <div className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
+                                Fuzzy Concern Score
+                              </div>
+                              <div className="text-sm font-bold text-white flex items-center gap-2">
+                                <span>{prediction.fuzzy_score.toFixed(1)} / 100</span>
+                                <span className={`text-[10px] px-2 py-0.2 rounded-full font-semibold border ${
+                                  prediction.fuzzy_category === "High"
+                                    ? "bg-rose-500/20 text-rose-300 border-rose-500/30"
+                                    : prediction.fuzzy_category === "Moderate"
+                                    ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
+                                    : "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                                }`}>
+                                  {prediction.fuzzy_category}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <a
+                            href="#fuzzy-section"
+                            className="px-2.5 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-[11px] font-semibold transition-all shadow-md shadow-violet-900/30"
+                          >
+                            Explore XAI ↓
+                          </a>
+                        </div>
+                      )}
+
                       <div className="space-y-3 mt-auto">
+
                         <div className="flex justify-between text-sm py-2 border-b border-white/5">
                           <span className="text-slate-400">Model Version</span>
                           <span className="text-slate-200 font-mono">
@@ -1022,28 +1625,38 @@ const handleGenerateReport = async () => {
                         </div>
                       </div>
                     </div>
-                  ) : null}
-                  {/* : (
-                    <div className="flex-1 flex flex-col items-center justify-center text-center opacity-40">
-                      <div className="w-24 h-24 rounded-full bg-slate-800 flex items-center justify-center mb-4 relative">
+                  ) : (
+                    <div className="flex-1 flex flex-col items-center justify-center text-center opacity-50 py-12">
+                      <div className="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center mb-4 relative">
                         <Brain className="w-10 h-10 text-slate-500" />
                         {isAnalyzing && (
                           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-violet-500/20 to-transparent animate-scan" />
                         )}
                       </div>
-                      <p className="text-slate-300 font-medium">
-                        Waiting for Analysis
+                      <p className="text-slate-300 font-medium text-sm">
+                        Waiting for Speech Analysis
                       </p>
-                      <p className="text-sm text-slate-500 mt-2 max-w-[200px]">
-                        Upload a file and click &quot;Start Diagnosis&quot; to
-                        see results here.
+                      <p className="text-xs text-slate-500 mt-1 max-w-[220px]">
+                        Upload a voice sample and click &quot;Start Diagnosis&quot; to see deep learning and fuzzy logic results.
                       </p>
                     </div>
-                  ) */}
+                  )}
                 </div>
               </div>
             </div>
+
+
+            {/* 🔥 Full Fuzzy Logic & Explainable AI (XAI) Analysis Section */}
+            {prediction && (
+              <div id="fuzzy-section" className="max-w-6xl mx-auto">
+                <FuzzyLogicAnalysisSection
+                  prediction={prediction}
+                  onOpenPlots={() => setShowFuzzyModal(true)}
+                />
+              </div>
+            )}
           </main>
+
 
           {/* CHAT OVERLAY */}
           <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
@@ -1139,6 +1752,12 @@ const handleGenerateReport = async () => {
           </div>
         </div>
       )}
+
+      {/* Fuzzy Plots & Inspection Modal */}
+      <FuzzyPlotsModal
+        isOpen={showFuzzyModal}
+        onClose={() => setShowFuzzyModal(false)}
+      />
     </div>
   );
 }

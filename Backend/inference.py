@@ -6,6 +6,7 @@ import librosa
 
 from audio_preprocessing import preprocess_audio
 from model_gru import AttentionLayer
+from fuzzy_logic import assess_speech_fuzzy
 
 
 TIME_STEPS = 300
@@ -111,18 +112,46 @@ def predict_file(
         used_model = real_id
 
     label = "Alzheimer" if prob >= DECISION_THRESHOLD else "Control"
+    label_num = 1 if prob >= DECISION_THRESHOLD else 0
+
+    # Execute Mamdani Fuzzy Inference System with DL probability and prosodic biomarkers
+    fuzzy_assessment = assess_speech_fuzzy(
+        dl_probability=prob,
+        avg_pause_duration=float(prosody[0]),
+        intra_sentence_pauses=float(prosody[3]),
+        phonation_rate=float(prosody[4]),
+        jitter=float(prosody[5]),
+        shimmer=float(prosody[6]),
+    )
 
     return {
         "prediction": label,
+        "class_name": label,
+        "label": label_num,
         "probability": round(prob, 4),
+        "deep_learning_probability": round(prob, 4),
         "threshold_used": DECISION_THRESHOLD,
         "model_used": used_model,
+        "model_name": used_model,
         "biomarkers": {
             "avg_pause_duration": float(prosody[0]),
+            "pause_std": float(prosody[1]),
+            "pause_count": int(prosody[2]),
             "intra_sentence_pauses": int(prosody[3]),
+            "phonation_rate": float(prosody[4]),
             "jitter": float(prosody[5]),
             "shimmer": float(prosody[6]),
-        }
+        },
+        # Top-level Fuzzy Logic keys for direct consumption
+        "fuzzy_score": fuzzy_assessment["fuzzy_score"],
+        "fuzzy_category": fuzzy_assessment["fuzzy_category"],
+        "feature_analysis": fuzzy_assessment["feature_analysis"],
+        "feature_raw_values": fuzzy_assessment["feature_raw_values"],
+        "activated_rules": fuzzy_assessment["activated_rules"],
+        "explanation": fuzzy_assessment["explanation"],
+        "assessment_type": fuzzy_assessment["assessment_type"],
+        # Complete nested Fuzzy Assessment details (membership breakdown, agreement, etc.)
+        "fuzzy_analysis": fuzzy_assessment,
     }
 
 if __name__ == "__main__":

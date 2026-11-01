@@ -119,8 +119,31 @@ def generate_report(
 
     return report
 
+
+@app.get("/fuzzy/rules")
+def get_fuzzy_rules():
+    """Returns the Mamdani fuzzy inference rules and empirical membership configurations."""
+    from fuzzy_rules import build_rule_base, MEMBERSHIP_PARAMS
+
+    rules = build_rule_base()
+    return {
+        "rules": [
+            {
+                "rule_id": r.rule_id,
+                "name": r.name,
+                "description": r.description,
+                "consequent": r.consequent,
+                "research_context": r.research_context,
+            }
+            for r in rules
+        ],
+        "membership_parameters": MEMBERSHIP_PARAMS,
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(
         "app:app",
         host="127.0.0.1",
